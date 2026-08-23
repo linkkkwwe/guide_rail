@@ -1,0 +1,22 @@
+# Keil MDK build artifacts
+MDK-ARM/Guide_rail/
+MDK-ARM/RTE/
+MDK-ARM/*.uvguix.*
+MDK-ARM/*.lst
+MDK-ARM/*.log
+output/
+*.o
+*.d
+*.crf
+*.lst
+*.lnp
+*.htm
+*.dep
+*.axf
+*.hex
+*.bin
+*.elf
+*.map
+*.bak
+JLinkLog.txt
+DebugConfig/
