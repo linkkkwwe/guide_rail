@@ -29,12 +29,18 @@
 #define YAW_SPEED_MAX_OUT  30000.0f    /* 速度环输出上限 = GM6020 电压上限 */
 #define YAW_SPEED_MAX_IOUT  5000.0f
 
+/* ===== Yaw 持续匀速转动模式（默认启用） =====
+ * 匀速模式下跳过角度环与 ±30° 限位，速度环直接跟踪恒定转速。
+ * 正值 = 正向转动，负值 = 反向转动，转速按机械实际情况调。 */
+#define YAW_SPIN_SPEED_RPM    60.0f    /* yaw 匀速转速（rpm） */
+
 /* ===== 水平电机 PID 参数（与 Yaw 相同，后续按机械结构单独调） ===== */
 #define HORIZONTAL_ANGLE_KP          20.0f
 #define HORIZONTAL_ANGLE_KI           0.0f
 #define HORIZONTAL_ANGLE_KD           0.0f
 #define HORIZONTAL_ANGLE_MAX_OUT    3000.0f
 #define HORIZONTAL_ANGLE_MAX_IOUT   5000.0f
+/* 水平轴用单环（角度环）控制，速度环参数不需要，保持注释 */
 // #define HORIZONTAL_SPEED_KP        1000.0f
 // #define HORIZONTAL_SPEED_KI           1.0f
 // #define HORIZONTAL_SPEED_KD           0.0f
@@ -64,6 +70,9 @@ typedef struct
 
     uint8_t  use_cascade;      /**< 是否启用串级 PID（角度环 → 速度环）. */
 
+    fp32     spin_speed_rpm;   /**< 匀速模式转速（rpm）：非 0 时速度环直接跟踪该转速. */
+    uint8_t  spin_use_limits;  /**< 匀速模式是否启用角度限位（到限位自动反向）. */
+
     int32_t  total_rounds;    /**< 累计圈数（过零时 ±1）. */
     uint16_t offset_ecd;      /**< 上电时记录的 ecd，作为 0° 参考点. */
     uint16_t last_ecd;        /**< 上一次 ecd，用于计算过零跳变. */
@@ -78,6 +87,14 @@ typedef struct
  * @param axis  轴类型：MOTOR_AXIS_YAW 或 MOTOR_AXIS_HORIZONTAL。
  */
 void motor_ctrl_init(motor_ctrl_t *motor, motor_axis_e axis);
+
+/**
+  * @brief  设置/取消匀速转动模式（仅串级电机生效）。
+  * @param  motor 控制器实例。
+  * @param  rpm         匀速目标转速（rpm）；传 0 取消，恢复角度控制。
+  * @param  use_limits  1 = 到达角度限位自动反向（匀速往返）；0 = 不限位连续转。
+  */
+void motor_ctrl_set_spin(motor_ctrl_t *motor, fp32 rpm, uint8_t use_limits);
 
 /**
  * @brief 执行一次串级 PID 控制（每个控制周期调用一次）。

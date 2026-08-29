@@ -38,7 +38,7 @@ void motor_ctrl_init(motor_ctrl_t *motor, motor_axis_e axis)
                  HORIZONTAL_ANGLE_MAX_OUT, HORIZONTAL_ANGLE_MAX_IOUT);
         // Pid_init(&motor->pid_speed, speed_pid,
         //          HORIZONTAL_SPEED_MAX_OUT, HORIZONTAL_SPEED_MAX_IOUT);
-        motor->use_cascade = 0U; /* 暂只启用角度环单环控制（输出直接当电压），速度环未启用 */
+        motor->use_cascade = 0U; /* 单环（角度环）控制：输出直接当电压，靠三角波轨迹实现匀速往返 */
         motor->min_angle = HORIZONTAL_MIN_ANGLE_DEG;
         motor->max_angle = HORIZONTAL_MAX_ANGLE_DEG;
     }
@@ -72,11 +72,22 @@ void motor_ctrl_clear(motor_ctrl_t *motor)
     if (motor->use_cascade)
         Pid_clear(&motor->pid_speed);        
     
+    motor->spin_speed_rpm = 0.0f;  /* 掉线清零：恢复后由上层重新设置匀速模式 */
     motor->total_rounds = 0;
     motor->offset_ecd = 0U;
     motor->last_ecd = 0U;
     motor->current_angle = 0.0f;
     motor->initialized = 0U;
+}
+
+void motor_ctrl_set_spin(motor_ctrl_t *motor, fp32 rpm, uint8_t use_limits)
+{
+    if (motor == NULL)
+        return;
+
+    /* 只有串级（带速度环）的电机支持匀速模式 */
+    motor->spin_speed_rpm = motor->use_cascade ? rpm : 0.0f;
+    motor->spin_use_limits = use_limits;
 }
 
 int16_t motor_ctrl_update(motor_ctrl_t *motor, fp32 target_angle,
@@ -116,6 +127,23 @@ int16_t motor_ctrl_update(motor_ctrl_t *motor, fp32 target_angle,
     relative_ecd = motor->total_rounds * ECD_RANGE +
                    (int32_t)ecd - (int32_t)motor->offset_ecd;
     motor->current_angle = relative_ecd * DEG_PER_ECD;
+
+    /* 匀速模式：跳过角度环，速度环直接跟踪恒定转速 */
+    if (motor->spin_speed_rpm != 0.0f)
+    {
+        /* 带限位的匀速（水平轴）：到达角度限位即反向，形成匀速往返扫摆 */
+        if (motor->spin_use_limits)
+        {
+            if (motor->current_angle >= motor->max_angle &&
+                motor->spin_speed_rpm > 0.0f)
+                motor->spin_speed_rpm = -motor->spin_speed_rpm;
+            else if (motor->current_angle <= motor->min_angle &&
+                     motor->spin_speed_rpm < 0.0f)
+                motor->spin_speed_rpm = -motor->spin_speed_rpm;
+        }
+        voltage = Pid_calc(&motor->pid_speed, speed_rpm, motor->spin_speed_rpm);
+        return (int16_t)voltage;
+    }
 
     /* 目标角度限幅，防止轨迹超出机械行程 */
     target_angle = constrain_float(target_angle, motor->min_angle, motor->max_angle);

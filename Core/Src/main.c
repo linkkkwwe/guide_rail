@@ -131,14 +131,16 @@ int main(void)
       motor_ctrl_update(&horizontal_motor, 0.0f,
                         motor_measure[HORIZONTAL_MOTOR].ecd,
                         motor_measure[HORIZONTAL_MOTOR].speed_rpm);
-      trajectory_set_yaw_mode(TRAJ_SINE);
-      trajectory_set_horizontal_mode(TRAJ_TRIANGLE);
+      trajectory_set_yaw_mode(TRAJ_STOP);   /* yaw 不走轨迹摆动，改用匀速模式 */
+      motor_ctrl_set_spin(&yaw_motor, YAW_SPIN_SPEED_RPM, 0U); /* yaw 默认匀速连续转（不限位） */
+      trajectory_set_horizontal_mode(TRAJ_TRIANGLE); /* 水平轴单环+三角波：限位内匀速往返扫摆 */
       control_started = 1U;
       CAN_cmd_both(0, 0);
       continue;
     }   
 
     {
+      /* yaw 匀速模式下目标角度参数被忽略（见 Motor.c 匀速分支） */
       int16_t yaw_v = motor_ctrl_update(&yaw_motor, trajectory_get_yaw(),     //主要循环控制
                                         motor_measure[YAW_MOTOR].ecd,
                                         motor_measure[YAW_MOTOR].speed_rpm);
