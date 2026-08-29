@@ -4,6 +4,7 @@ MDK-ARM/RTE/
 MDK-ARM/*.uvguix.*
 MDK-ARM/*.lst
 MDK-ARM/*.log
+MDK-ARM/build_log.txt
 output/
 *.o
 *.d
