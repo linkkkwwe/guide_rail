@@ -109,7 +109,8 @@ int main(void)
       continue;
     control_tick_flag = 0U;
 
-    if (!CAN_motor_feedback_ready())
+    if (!CAN_motor_feedback_ready())  // 还没收到电机反馈，先空转
+      continue;
     {
       CAN_cmd_both(0, 0);
       if (control_started)
@@ -122,7 +123,7 @@ int main(void)
       continue;
     }
 
-    if (!control_started)
+    if (!control_started)   //先配置
     {
       motor_ctrl_update(&yaw_motor, 0.0f,
                         motor_measure[YAW_MOTOR].ecd,
@@ -135,10 +136,10 @@ int main(void)
       control_started = 1U;
       CAN_cmd_both(0, 0);
       continue;
-    }
+    }   
 
     {
-      int16_t yaw_v = motor_ctrl_update(&yaw_motor, trajectory_get_yaw(),
+      int16_t yaw_v = motor_ctrl_update(&yaw_motor, trajectory_get_yaw(),     //主要循环控制
                                         motor_measure[YAW_MOTOR].ecd,
                                         motor_measure[YAW_MOTOR].speed_rpm);
       int16_t hori_v = motor_ctrl_update(&horizontal_motor,
