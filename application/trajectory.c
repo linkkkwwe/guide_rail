@@ -91,7 +91,7 @@ void trajectory_set_horizontal_mode(traj_mode_t mode)
     horizontal_start_tick = HAL_GetTick();
 }
 
-fp32 trajectory_get_yaw(void)
+  fp32 trajectory_get_yaw(void)
 {
     return calc_angle(yaw_mode, HAL_GetTick() - yaw_start_tick);
 }

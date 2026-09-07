@@ -1,4 +1,4 @@
-#include "Motor.h"
+﻿#include "Motor.h"
 #include <stddef.h>
 
 #define ECD_RANGE       8192              /* 编码器一圈 = 8192 计数 */
@@ -44,17 +44,18 @@ void motor_ctrl_init(motor_ctrl_t *motor, motor_axis_e axis)
     }
     else
     {
-        angle_pid[0] = YAW_ANGLE_KP;
-        angle_pid[1] = YAW_ANGLE_KI;
-        angle_pid[2] = YAW_ANGLE_KD;
+        /* Yaw 仅匀速模式：角度环不用（spin 分支直接跳过），只初始化速度环 */
+        // angle_pid[0] = YAW_ANGLE_KP;
+        // angle_pid[1] = YAW_ANGLE_KI;
+        // angle_pid[2] = YAW_ANGLE_KD;
         speed_pid[0] = YAW_SPEED_KP;
         speed_pid[1] = YAW_SPEED_KI;
         speed_pid[2] = YAW_SPEED_KD;
-        Pid_init(&motor->pid_angle, angle_pid,
-                 YAW_ANGLE_MAX_OUT, YAW_ANGLE_MAX_IOUT);
+        // Pid_init(&motor->pid_angle, angle_pid,
+        //          YAW_ANGLE_MAX_OUT, YAW_ANGLE_MAX_IOUT);
         Pid_init(&motor->pid_speed, speed_pid,
                  YAW_SPEED_MAX_OUT, YAW_SPEED_MAX_IOUT);
-        motor->use_cascade = 1U; /* Yaw 电机启用角度环 → 速度环串级 PID */
+        motor->use_cascade = 1U; /* 保持 1：motor_ctrl_set_spin 据此允许进入匀速模式 */
         motor->min_angle = YAW_MIN_ANGLE_DEG;
         motor->max_angle = YAW_MAX_ANGLE_DEG;
     }

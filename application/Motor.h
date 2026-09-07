@@ -16,15 +16,17 @@
  * ======================================================
  */
 
-/* ===== Yaw 电机 PID 参数（初始参考值，实物调试时再调） ===== */
-#define YAW_ANGLE_KP          20.0f    /* 角度环比例：1° 误差 → 20rpm 目标转速 */
-#define YAW_ANGLE_KI           0.0f    /* 角度环积分：先关掉，防超调 */
-#define YAW_ANGLE_KD           0.0f
-#define YAW_ANGLE_MAX_OUT    200.0f    /* 角度环输出上限 = 目标转速上限 rpm */
-#define YAW_ANGLE_MAX_IOUT     0.0f
+/* ===== Yaw 电机参数 =====
+ * Yaw 仅匀速模式（spin），只用速度环，角度环已注释不用。
+ * 若以后需要角度定位（如步兵瞄准），取消下面角度环注释即可。 */
+// #define YAW_ANGLE_KP          20.0f
+// #define YAW_ANGLE_KI           0.0f
+// #define YAW_ANGLE_KD           0.0f
+// #define YAW_ANGLE_MAX_OUT    200.0f
+// #define YAW_ANGLE_MAX_IOUT     0.0f
 
-#define YAW_SPEED_KP        1000.0f    /* 速度环比例：1rpm 误差 → 1000 电压 */
-#define YAW_SPEED_KI           1.0f
+#define YAW_SPEED_KP        3000.0f    /* 仿真调参：Kp=9249，阶跃响应快且无超调 */
+#define YAW_SPEED_KI           2.0f    /* 仿真调参：Ki=2，稳态误差 0.29rpm */
 #define YAW_SPEED_KD           0.0f
 #define YAW_SPEED_MAX_OUT  30000.0f    /* 速度环输出上限 = GM6020 电压上限 */
 #define YAW_SPEED_MAX_IOUT  5000.0f
@@ -35,9 +37,9 @@
 #define YAW_SPIN_SPEED_RPM    60.0f    /* yaw 匀速转速（rpm） */
 
 /* ===== 水平电机 PID 参数（与 Yaw 相同，后续按机械结构单独调） ===== */
-#define HORIZONTAL_ANGLE_KP          20.0f
-#define HORIZONTAL_ANGLE_KI           0.0f
-#define HORIZONTAL_ANGLE_KD           0.0f
+#define HORIZONTAL_ANGLE_KP         309.0f    /* 仿真调参：Kp=309 */
+#define HORIZONTAL_ANGLE_KI           0.0f    /* 不用积分（避免三角波拐点 windup） */
+#define HORIZONTAL_ANGLE_KD        6900.0f    /* 仿真调参：Kd=6900，压拐点过冲 */
 #define HORIZONTAL_ANGLE_MAX_OUT    3000.0f
 #define HORIZONTAL_ANGLE_MAX_IOUT   5000.0f
 /* 水平轴用单环（角度环）控制，速度环参数不需要，保持注释 */

@@ -109,8 +109,7 @@ int main(void)
       continue;
     control_tick_flag = 0U;
 
-    if (!CAN_motor_feedback_ready())  // 还没收到电机反馈，先空转
-      continue;
+    if (!CAN_motor_feedback_ready())  // 反馈丢失：立即发 0 保安全，清理状态，下次恢复后重新配置
     {
       CAN_cmd_both(0, 0);
       if (control_started)
