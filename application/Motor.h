@@ -1,17 +1,15 @@
-#ifndef MOTOR_H
+﻿#ifndef MOTOR_H
 #define MOTOR_H
 
 #include "pid.h"
 
 /*
- * ==================== 串级 PID 结构 ====================
- * 角度环（外环）: 目标角度 vs 编码器角度 → 输出目标转速
- *    ↓
- * 速度环（内环）: 目标转速 vs 反馈转速 → 输出电压（±30000）
- *    ↓
- * CAN_cmd_both() → 0x1FF 下发
+ * ==================== 电机控制结构 ====================
+ * Yaw：速度环单环（匀速模式），速度环 PID → 电压 → CAN
+ * 水平轴：角度环单环，角度环 PID → 电压 → CAN
+ * 串级（角度环→速度环）分支已注释，当前无电机使用。
  *
- * 两个环共用 pid.h 的位置式 PID，仅参数不同。
+ * 两轴共用 pid.h 的位置式 PID，仅参数不同。
  * 无 IMU：位置反馈用电机自带编码器（上电位置为 0° 参考）。
  * ======================================================
  */
@@ -25,7 +23,7 @@
 // #define YAW_ANGLE_MAX_OUT    200.0f
 // #define YAW_ANGLE_MAX_IOUT     0.0f
 
-#define YAW_SPEED_KP        3000.0f    /* 仿真调参：Kp=9249，阶跃响应快且无超调 */
+#define YAW_SPEED_KP        3000.0f    /* 上机安全值（仿真调到 9249，真机降为 3000 防抖） */
 #define YAW_SPEED_KI           2.0f    /* 仿真调参：Ki=2，稳态误差 0.29rpm */
 #define YAW_SPEED_KD           0.0f
 #define YAW_SPEED_MAX_OUT  30000.0f    /* 速度环输出上限 = GM6020 电压上限 */
@@ -50,8 +48,8 @@
 // #define HORIZONTAL_SPEED_MAX_IOUT  5000.0f
 
 /* ===== 角度限位（相对上电位置） =====
- * Yaw 与水平轴暂都限制 ±30°，防止轨迹把机构甩出机械行程。
- * 水平轴机械结构确定后，需要把电机角度换算为实际位移并重新设限。 */
+ * Yaw：匀速连续转，限位不生效（角度环未启用）。
+ * 水平轴：±30° 限位，靠 constrain_float 限制目标角度。 */
 #define YAW_MIN_ANGLE_DEG          (-30.0f)
 #define YAW_MAX_ANGLE_DEG            30.0f
 #define HORIZONTAL_MIN_ANGLE_DEG   (-30.0f)
@@ -73,7 +71,7 @@ typedef struct
     uint8_t  use_cascade;      /**< 是否启用串级 PID（角度环 → 速度环）. */
 
     fp32     spin_speed_rpm;   /**< 匀速模式转速（rpm）：非 0 时速度环直接跟踪该转速. */
-    uint8_t  spin_use_limits;  /**< 匀速模式是否启用角度限位（到限位自动反向）. */
+    uint8_t  spin_use_limits;  /**< 匀速模式角度限位开关（当前未用，限位分支已注释）. */
 
     int32_t  total_rounds;    /**< 累计圈数（过零时 ±1）. */
     uint16_t offset_ecd;      /**< 上电时记录的 ecd，作为 0° 参考点. */

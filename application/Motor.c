@@ -88,7 +88,8 @@ void motor_ctrl_set_spin(motor_ctrl_t *motor, fp32 rpm, uint8_t use_limits)
 
     /* 只有串级（带速度环）的电机支持匀速模式 */
     motor->spin_speed_rpm = motor->use_cascade ? rpm : 0.0f;
-    motor->spin_use_limits = use_limits;
+    /* spin_use_limits 已注释：限位匀速分支不再使用，该字段暂不赋值 */
+    // motor->spin_use_limits = use_limits;
 }
 
 int16_t motor_ctrl_update(motor_ctrl_t *motor, fp32 target_angle,
@@ -129,19 +130,19 @@ int16_t motor_ctrl_update(motor_ctrl_t *motor, fp32 target_angle,
                    (int32_t)ecd - (int32_t)motor->offset_ecd;
     motor->current_angle = relative_ecd * DEG_PER_ECD;
 
-    /* 匀速模式：跳过角度环，速度环直接跟踪恒定转速 */
+    /* 匀速模式：跳过角度环，速度环直接跟踪恒定转速（仅 yaw 使用） */
     if (motor->spin_speed_rpm != 0.0f)
     {
-        /* 带限位的匀速（水平轴）：到达角度限位即反向，形成匀速往返扫摆 */
-        if (motor->spin_use_limits)
-        {
-            if (motor->current_angle >= motor->max_angle &&
-                motor->spin_speed_rpm > 0.0f)
-                motor->spin_speed_rpm = -motor->spin_speed_rpm;
-            else if (motor->current_angle <= motor->min_angle &&
-                     motor->spin_speed_rpm < 0.0f)
-                motor->spin_speed_rpm = -motor->spin_speed_rpm;
-        }
+        /* 限位匀速分支已注释：当前 yaw 不限位连续转，水平轴不走匀速 */
+        // if (motor->spin_use_limits)
+        // {
+        //     if (motor->current_angle >= motor->max_angle &&
+        //         motor->spin_speed_rpm > 0.0f)
+        //         motor->spin_speed_rpm = -motor->spin_speed_rpm;
+        //     else if (motor->current_angle <= motor->min_angle &&
+        //              motor->spin_speed_rpm < 0.0f)
+        //         motor->spin_speed_rpm = -motor->spin_speed_rpm;
+        // }
         voltage = Pid_calc(&motor->pid_speed, speed_rpm, motor->spin_speed_rpm);
         return (int16_t)voltage;
     }
@@ -152,13 +153,14 @@ int16_t motor_ctrl_update(motor_ctrl_t *motor, fp32 target_angle,
     /* 外环：角度误差 → 目标转速 */
     target_speed = Pid_calc(&motor->pid_angle,
                             motor->current_angle, target_angle);
-    /* 内环：转速误差 → 电压 */
-    if (motor->use_cascade){
-         voltage = Pid_calc(&motor->pid_speed, speed_rpm, target_speed);
-    }
-    else{
-        voltage = target_speed; /* 不启用速度环时，直接把角度环输出当作电压 */
-    }
+    /* 串级分支已注释：当前无电机走串级（yaw 匀速提前 return，水平轴单环） */
+    // if (motor->use_cascade){
+    //      voltage = Pid_calc(&motor->pid_speed, speed_rpm, target_speed);
+    // }
+    // else{
+    //     voltage = target_speed;
+    // }
+    voltage = target_speed; /* 单环：角度环输出直接当电压 */
 
     return (int16_t)voltage;
 }
