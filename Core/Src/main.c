@@ -10,6 +10,7 @@
 #include "main.h"
 #include "can.h"
 #include "tim.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -41,6 +42,10 @@ static uint8_t control_started;
 
 /* TIM6 每 1ms 置 1，主循环看到它才执行一轮控制（volatile：中断里写） */
 static volatile uint8_t control_tick_flag;
+
+/* Bluetooth start/stop control: 1=run, 0=stop, default stop on power-up */
+static volatile uint8_t bt_run_command = 0U;
+static uint8_t rx_byte;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -83,6 +88,7 @@ int main(void)
   MX_GPIO_Init();
   MX_CAN1_Init();
   MX_TIM6_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   if (can_comm_init() != HAL_OK)
     Error_Handler();
@@ -95,6 +101,9 @@ int main(void)
 
   /* 启动 TIM6 中断：每 1ms 置 control_tick_flag，驱动控制周期 */
   HAL_TIM_Base_Start_IT(&htim6);
+
+  /* Start USART1 RX interrupt (wait for Bluetooth command) */
+  HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -110,6 +119,19 @@ int main(void)
     control_tick_flag = 0U;
 
     if (!CAN_motor_feedback_ready())  // 反馈丢失：立即发 0 保安全，清理状态，下次恢复后重新配置
+    {
+      CAN_cmd_both(0, 0);
+      if (control_started)
+      {
+        motor_ctrl_clear(&yaw_motor);
+        motor_ctrl_clear(&horizontal_motor);
+        trajectory_init();
+        control_started = 0U;
+      }
+      continue;
+    }
+
+    if (!bt_run_command)   /* 蓝牙未发启动指令：发 0 电压，等待 */
     {
       CAN_cmd_both(0, 0);
       if (control_started)
@@ -205,6 +227,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM6)
     control_tick_flag = 1U;
+}
+/* 串口接收完成回调：收到一个字节，处理蓝牙指令 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART1)
+  {
+    if (rx_byte == '1')
+      bt_run_command = 1U;           /* 启动 */
+    else if (rx_byte == '0')
+      bt_run_command = 0U;           /* 停止 */
+    /* 重新启动接收，等待下一条指令 */
+    HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
+  }
 }
 /* USER CODE END 4 */
 
