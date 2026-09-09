@@ -54,7 +54,7 @@ HAL_StatusTypeDef CAN_cmd_both(int16_t yaw_voltage, int16_t horizontal_voltage)
     uint8_t data[8];
     uint32_t mailbox;
 
-    header.StdId = GM6020_COMMAND_ID;
+    header.StdId = C620_COMMAND_ID;
     header.IDE = CAN_ID_STD;
     header.RTR = CAN_RTR_DATA;
     header.DLC = 8U;

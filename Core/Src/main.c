@@ -1,4 +1,4 @@
-﻿/* USER CODE BEGIN Header */
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file           : main.c
@@ -44,7 +44,7 @@ static uint8_t control_started;
 static volatile uint8_t control_tick_flag;
 
 /* Bluetooth start/stop control: 1=run, 0=stop, default stop on power-up */
-static volatile uint8_t bt_run_command = 0U;
+static volatile uint8_t bt_run_command = 0U;  /* 蓝牙控制：1=启动 0=停止，上电默认停止 */
 static uint8_t rx_byte;
 /* USER CODE END PV */
 
@@ -159,7 +159,7 @@ int main(void)
       control_started = 1U;
       CAN_cmd_both(0, 0);
       continue;
-    }   
+    }
 
     {
       /* yaw 匀速模式：target_angle 被忽略，传 0.0f 即可 */
@@ -233,6 +233,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart->Instance == USART1)
   {
+    HAL_UART_Transmit(&huart1, &rx_byte, 1, 10);  /* 调试回显：收到什么原样发回，验证蓝牙链路 */
     if (rx_byte == '1')
       bt_run_command = 1U;           /* 启动 */
     else if (rx_byte == '0')

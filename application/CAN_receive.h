@@ -5,22 +5,22 @@
 #include "struct_typedef.h"
 
 /*
- * ==================== DJI GM6020 电机 CAN 协议 ====================
- * 控制帧：0x1FF 管拨码 ID 1~4（0x2FF 管 ID 5~8）。一帧 8 字节 =
- *         4 通道 × 2 字节，每个通道对应一个 ID 的电压（±30000）。
- *         本例两个电机拨 ID=1、2，故共用 0x1FF 一帧下发。
- * 反馈帧：GM6020 反馈 ID = 0x204 + 拨码ID（注意！C620 电调才是
- *         0x200 + ID，两者规则不同）。电机每 1ms 主动回传一帧。
+ * ==================== DJI C620 电调 CAN 协议（M3508 电机）====================
+ * 控制帧：0x200 管拨码 ID 1~4（0x1FF 管 ID 5~8）。一帧 8 字节 =
+ *         4 通道 × 2 字节，每个通道对应一个 ID 的电流（±16384）。
+ *         本例两个电机拨 ID=1、2，故共用 0x200 一帧下发。
+ * 反馈帧：C620 反馈 ID = 0x200 + 拨码ID（GM6020 是 0x204+ID，规则不同）。
+ *         电机每 1ms 主动回传一帧。
  * 反馈帧 8 字节 = ecd(2B) + speed_rpm(2B) + given_current(2B)
  *               + temperature(1B) + 保留(1B)，全部大端。
  * ================================================================
  */
 
-#define GM6020_COMMAND_ID       0x1FFU            /* 控制帧 ID（管 ID 1~4） */
+#define C620_COMMAND_ID        0x200U            /* 控制帧 ID（管 ID 1~4） */
 #define YAW_ESC_ID              1U                /* Yaw 电调拨码 ID */
 #define HORIZONTAL_ESC_ID       2U                /* 水平电调拨码 ID */
-#define CAN_YAW_FEEDBACK_ID     (0x204U + YAW_ESC_ID)         /* = 0x205 */
-#define CAN_HORIZONTAL_FEEDBACK_ID (0x204U + HORIZONTAL_ESC_ID) /* = 0x206 */
+#define CAN_YAW_FEEDBACK_ID     (0x200U + YAW_ESC_ID)         /* = 0x201 */
+#define CAN_HORIZONTAL_FEEDBACK_ID (0x200U + HORIZONTAL_ESC_ID) /* = 0x202 */
 
 /* 电机索引：与 motor_measure[] 数组下标对应 */
 typedef enum

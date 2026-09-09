@@ -1,10 +1,10 @@
-﻿#include "Motor.h"
+#include "Motor.h"
 #include <stddef.h>
 
 #define ECD_RANGE       8192              /* 编码器一圈 = 8192 计数 */
 #define ECD_HALF_RANGE  4096              /* 半圈阈值：ecd 跳变超过它即判定过零 */
 #define DEG_PER_ECD     (360.0f / 8192.0f) /* 每计数对应的角度 */
-
+#define M3508_GEAR_RATIO   19.2032f   /* 3591/187，转子转19.2圈=输出轴1圈 */
 /**
  * @brief 限幅：把 value 限制在 [min_value, max_value]。
  */
@@ -128,7 +128,7 @@ int16_t motor_ctrl_update(motor_ctrl_t *motor, fp32 target_angle,
     /* 连续角度 = (累计圈数 × 一圈 + 当前ecd - 上电ecd) × 每计数角度 */
     relative_ecd = motor->total_rounds * ECD_RANGE +
                    (int32_t)ecd - (int32_t)motor->offset_ecd;
-    motor->current_angle = relative_ecd * DEG_PER_ECD;
+    motor->current_angle = relative_ecd * DEG_PER_ECD/M3508_GEAR_RATIO;
 
     /* 匀速模式：跳过角度环，速度环直接跟踪恒定转速（仅 yaw 使用） */
     if (motor->spin_speed_rpm != 0.0f)

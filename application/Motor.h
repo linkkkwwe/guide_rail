@@ -1,4 +1,4 @@
-﻿#ifndef MOTOR_H
+#ifndef MOTOR_H
 #define MOTOR_H
 
 #include "pid.h"
@@ -23,22 +23,22 @@
 // #define YAW_ANGLE_MAX_OUT    200.0f
 // #define YAW_ANGLE_MAX_IOUT     0.0f
 
-#define YAW_SPEED_KP        3000.0f    /* 上机安全值（仿真调到 9249，真机降为 3000 防抖） */
-#define YAW_SPEED_KI           2.0f    /* 仿真调参：Ki=2，稳态误差 0.29rpm */
-#define YAW_SPEED_KD           0.0f
-#define YAW_SPEED_MAX_OUT  30000.0f    /* 速度环输出上限 = GM6020 电压上限 */
+#define YAW_SPEED_KP          15.0f   /* 上机安全值（仿真调到 9249，真机降为 3000 防抖） */
+#define YAW_SPEED_KI          1.0f   /* 仿真调参：Ki=2，稳态误差 0.29rpm */
+#define YAW_SPEED_KD          0.0f
+#define YAW_SPEED_MAX_OUT  16384.0f    /* 速度环输出上限 = C620 电流上限 */
 #define YAW_SPEED_MAX_IOUT  5000.0f
 
 /* ===== Yaw 持续匀速转动模式（默认启用） =====
  * 匀速模式下跳过角度环与 ±30° 限位，速度环直接跟踪恒定转速。
  * 正值 = 正向转动，负值 = 反向转动，转速按机械实际情况调。 */
-#define YAW_SPIN_SPEED_RPM    60.0f    /* yaw 匀速转速（rpm） */
+#define YAW_SPIN_SPEED_RPM    150.0f    /* yaw 匀速转速（rpm），3508 减速比大，10rpm 已很慢 */
 
 /* ===== 水平电机 PID 参数（与 Yaw 相同，后续按机械结构单独调） ===== */
-#define HORIZONTAL_ANGLE_KP         309.0f    /* 仿真调参：Kp=309 */
-#define HORIZONTAL_ANGLE_KI           0.0f    /* 不用积分（避免三角波拐点 windup） */
-#define HORIZONTAL_ANGLE_KD        6900.0f    /* 仿真调参：Kd=6900，压拐点过冲 */
-#define HORIZONTAL_ANGLE_MAX_OUT    3000.0f
+#define HORIZONTAL_ANGLE_KP         300.0f    /* 仿真调参：Kp=309 */
+#define HORIZONTAL_ANGLE_KI         0.0f    /* 不用积分（避免三角波拐点 windup） */
+#define HORIZONTAL_ANGLE_KD         0.0f    /* 仿真调参：Kd=6900，压拐点过冲 */
+#define HORIZONTAL_ANGLE_MAX_OUT    16384.0f
 #define HORIZONTAL_ANGLE_MAX_IOUT   5000.0f
 /* 水平轴用单环（角度环）控制，速度环参数不需要，保持注释 */
 // #define HORIZONTAL_SPEED_KP        1000.0f
