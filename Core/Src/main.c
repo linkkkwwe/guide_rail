@@ -45,6 +45,8 @@ static volatile uint8_t control_tick_flag;
 
 /* Bluetooth start/stop control: 1=run, 0=stop, default stop on power-up */
 static volatile uint8_t bt_run_command = 0U;  /* 蓝牙控制：1=启动 0=停止，上电默认停止 */
+static volatile uint8_t bt_traj_mode = 0U;    /* 轨迹模式：0=三角波 1=正弦波，上电默认三角波 */
+static uint8_t last_traj_mode = 0xFF;          /* 上次生效的模式，用于检测切换（0xFF=未初始化） */
 static uint8_t rx_byte;
 /* USER CODE END PV */
 
@@ -155,13 +157,22 @@ int main(void)
       /* yaw 匀速不走轨迹，set_yaw_mode 无实际效果（保留备将来切换角度模式） */
       // trajectory_set_yaw_mode(TRAJ_STOP);
       motor_ctrl_set_spin(&yaw_motor, YAW_SPIN_SPEED_RPM, 0U); /* yaw 默认匀速连续转（不限位） */
-      trajectory_set_horizontal_mode(TRAJ_TRIANGLE); /* 水平轴单环+三角波：限位内匀速往返扫摆 */
+      trajectory_set_horizontal_mode(bt_traj_mode ? TRAJ_SINE : TRAJ_TRIANGLE);
+      last_traj_mode = bt_traj_mode;
       control_started = 1U;
       CAN_cmd_both(0, 0);
       continue;
     }
 
     {
+      /* 运行中切换轨迹模式：重新初始化轨迹生成器 */
+      if (bt_traj_mode != last_traj_mode)
+      {
+        trajectory_init();
+        trajectory_set_horizontal_mode(bt_traj_mode ? TRAJ_SINE : TRAJ_TRIANGLE);
+        last_traj_mode = bt_traj_mode;
+      }
+
       /* yaw 匀速模式：target_angle 被忽略，传 0.0f 即可 */
       int16_t yaw_v = motor_ctrl_update(&yaw_motor, 0.0f,     //主要循环控制
                                         motor_measure[YAW_MOTOR].ecd,
@@ -235,7 +246,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
   {
     HAL_UART_Transmit(&huart1, &rx_byte, 1, 10);  /* 调试回显：收到什么原样发回，验证蓝牙链路 */
     if (rx_byte == '1')
+    {
+      bt_traj_mode = 0U;             /* 三角波 */
       bt_run_command = 1U;           /* 启动 */
+    }
+    else if (rx_byte == '2')
+    {
+      bt_traj_mode = 1U;             /* 正弦波 */
+      bt_run_command = 1U;           /* 启动 */
+    }
     else if (rx_byte == '0')
       bt_run_command = 0U;           /* 停止 */
     /* 重新启动接收，等待下一条指令 */

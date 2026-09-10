@@ -5,21 +5,20 @@
 #include "struct_typedef.h"
 
 /*
- * ==================== DJI C620 电调 CAN 协议（M3508 电机）====================
- * 控制帧：0x200 管拨码 ID 1~4（0x1FF 管 ID 5~8）。一帧 8 字节 =
- *         4 通道 × 2 字节，每个通道对应一个 ID 的电流（±16384）。
- *         本例两个电机拨 ID=1、2，故共用 0x200 一帧下发。
- * 反馈帧：C620 反馈 ID = 0x200 + 拨码ID（GM6020 是 0x204+ID，规则不同）。
- *         电机每 1ms 主动回传一帧。
+ * ==================== CAN 协议：Yaw=GM6020，水平=M3508 ====================
+ * GM6020：控制帧 0x1FF（管 ID 1~4），反馈帧 0x204+ID，电压 ±30000，直驱 1:1
+ * M3508 ：控制帧 0x200（管 ID 1~4），反馈帧 0x200+ID，电流 ±16384，减速比 19.2
+ * 两个电机用不同的控制帧，CAN_cmd_each 发两帧。
  * 反馈帧 8 字节 = ecd(2B) + speed_rpm(2B) + given_current(2B)
  *               + temperature(1B) + 保留(1B)，全部大端。
- * ================================================================
+ * ========================================================================
  */
 
-#define C620_COMMAND_ID        0x200U            /* 控制帧 ID（管 ID 1~4） */
-#define YAW_ESC_ID              1U                /* Yaw 电调拨码 ID */
-#define HORIZONTAL_ESC_ID       2U                /* 水平电调拨码 ID */
-#define CAN_YAW_FEEDBACK_ID     (0x200U + YAW_ESC_ID)         /* = 0x201 */
+#define GM6020_COMMAND_ID      0x1FFU            /* GM6020 控制帧（管 ID 1~4） */
+#define C620_COMMAND_ID        0x200U            /* C620 控制帧（管 ID 1~4） */
+#define YAW_ESC_ID              1U                /* Yaw 电调拨码 ID（GM6020） */
+#define HORIZONTAL_ESC_ID       2U                /* 水平电调拨码 ID（C620/M3508） */
+#define CAN_YAW_FEEDBACK_ID     (0x204U + YAW_ESC_ID)          /* = 0x205 */
 #define CAN_HORIZONTAL_FEEDBACK_ID (0x200U + HORIZONTAL_ESC_ID) /* = 0x202 */
 
 /* 电机索引：与 motor_measure[] 数组下标对应 */
@@ -44,10 +43,10 @@ typedef struct
 extern volatile motor_measure_t motor_measure[GUIDE_MOTOR_COUNT];
 
 /**
- * @brief 一帧 0x1FF 同时下发两个电机的电压。
- * @param yaw_voltage        Yaw 电机电压（±30000）。
- * @param horizontal_voltage 水平电机电压（±30000）。
- * @return HAL_OK 发送成功；否则发送失败（如邮箱满）。
+ * @brief 分别下发两个电机的指令：Yaw 走 0x1FF（GM6020），水平走 0x200（C620）。
+ * @param yaw_voltage        Yaw 电机电压（±30000，GM6020）。
+ * @param horizontal_voltage 水平电机电流（±16384，C620/M3508）。
+ * @return HAL_OK 两帧都发送成功；否则至少一帧失败。
  */
 HAL_StatusTypeDef CAN_cmd_both(int16_t yaw_voltage, int16_t horizontal_voltage);
 

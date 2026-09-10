@@ -23,16 +23,16 @@
 // #define YAW_ANGLE_MAX_OUT    200.0f
 // #define YAW_ANGLE_MAX_IOUT     0.0f
 
-#define YAW_SPEED_KP          15.0f   /* 上机安全值（仿真调到 9249，真机降为 3000 防抖） */
-#define YAW_SPEED_KI          1.0f   /* 仿真调参：Ki=2，稳态误差 0.29rpm */
+#define YAW_SPEED_KP          1000.0f   /* GM6020 速度环 Kp（DJI 官方参考值） */
+#define YAW_SPEED_KI          0.0f      /* 纯 P，避免低速摩擦极限环 */
 #define YAW_SPEED_KD          0.0f
-#define YAW_SPEED_MAX_OUT  16384.0f    /* 速度环输出上限 = C620 电流上限 */
+#define YAW_SPEED_MAX_OUT  30000.0f     /* GM6020 电压上限 ±30000 */
 #define YAW_SPEED_MAX_IOUT  5000.0f
 
 /* ===== Yaw 持续匀速转动模式（默认启用） =====
  * 匀速模式下跳过角度环与 ±30° 限位，速度环直接跟踪恒定转速。
  * 正值 = 正向转动，负值 = 反向转动，转速按机械实际情况调。 */
-#define YAW_SPIN_SPEED_RPM    150.0f    /* yaw 匀速转速（rpm），3508 减速比大，10rpm 已很慢 */
+#define YAW_SPIN_SPEED_RPM    60.0f    /* GM6020 直驱，60rpm 肉眼可见的慢转 */
 
 /* ===== 水平电机 PID 参数（与 Yaw 相同，后续按机械结构单独调） ===== */
 #define HORIZONTAL_ANGLE_KP         300.0f    /* 仿真调参：Kp=309 */
@@ -73,6 +73,7 @@ typedef struct
     fp32     spin_speed_rpm;   /**< 匀速模式转速（rpm）：非 0 时速度环直接跟踪该转速. */
     uint8_t  spin_use_limits;  /**< 匀速模式角度限位开关（当前未用，限位分支已注释）. */
 
+    fp32     gear_ratio;      /**< 减速比：GM6020=1.0（直驱），M3508=19.2（有减速箱）. */
     int32_t  total_rounds;    /**< 累计圈数（过零时 ±1）. */
     uint16_t offset_ecd;      /**< 上电时记录的 ecd，作为 0° 参考点. */
     uint16_t last_ecd;        /**< 上一次 ecd，用于计算过零跳变. */

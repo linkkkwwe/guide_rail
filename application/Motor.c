@@ -5,6 +5,7 @@
 #define ECD_HALF_RANGE  4096              /* 半圈阈值：ecd 跳变超过它即判定过零 */
 #define DEG_PER_ECD     (360.0f / 8192.0f) /* 每计数对应的角度 */
 #define M3508_GEAR_RATIO   19.2032f   /* 3591/187，转子转19.2圈=输出轴1圈 */
+#define GM6020_GEAR_RATIO  1.0f       /* GM6020 直驱，无减速箱 */
 /**
  * @brief 限幅：把 value 限制在 [min_value, max_value]。
  */
@@ -41,10 +42,12 @@ void motor_ctrl_init(motor_ctrl_t *motor, motor_axis_e axis)
         motor->use_cascade = 0U; /* 单环（角度环）控制：输出直接当电压，靠三角波轨迹实现匀速往返 */
         motor->min_angle = HORIZONTAL_MIN_ANGLE_DEG;
         motor->max_angle = HORIZONTAL_MAX_ANGLE_DEG;
+        motor->gear_ratio = M3508_GEAR_RATIO;
     }
     else
     {
         /* Yaw 仅匀速模式：角度环不用（spin 分支直接跳过），只初始化速度环 */
+        motor->gear_ratio = GM6020_GEAR_RATIO;
         // angle_pid[0] = YAW_ANGLE_KP;
         // angle_pid[1] = YAW_ANGLE_KI;
         // angle_pid[2] = YAW_ANGLE_KD;
@@ -74,6 +77,7 @@ void motor_ctrl_clear(motor_ctrl_t *motor)
         Pid_clear(&motor->pid_speed);        
     
     motor->spin_speed_rpm = 0.0f;  /* 掉线清零：恢复后由上层重新设置匀速模式 */
+    motor->gear_ratio = GM6020_GEAR_RATIO; /* 默认 1.0，init 会按轴覆盖 */
     motor->total_rounds = 0;
     motor->offset_ecd = 0U;
     motor->last_ecd = 0U;
@@ -128,7 +132,7 @@ int16_t motor_ctrl_update(motor_ctrl_t *motor, fp32 target_angle,
     /* 连续角度 = (累计圈数 × 一圈 + 当前ecd - 上电ecd) × 每计数角度 */
     relative_ecd = motor->total_rounds * ECD_RANGE +
                    (int32_t)ecd - (int32_t)motor->offset_ecd;
-    motor->current_angle = relative_ecd * DEG_PER_ECD/M3508_GEAR_RATIO;
+    motor->current_angle = relative_ecd * DEG_PER_ECD / motor->gear_ratio;
 
     /* 匀速模式：跳过角度环，速度环直接跟踪恒定转速（仅 yaw 使用） */
     if (motor->spin_speed_rpm != 0.0f)

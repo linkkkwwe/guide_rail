@@ -1,5 +1,6 @@
 #include "CAN_receive.h"
 #include "can.h"
+#include <string.h>
 
 /* 电机反馈数组：中断里写，主循环读，必须 volatile 防止编译器缓存 */
 volatile motor_measure_t motor_measure[GUIDE_MOTOR_COUNT];
@@ -43,33 +44,37 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 }
 
 /**
- * @brief 把两个电压值拆成 8 字节大端发往 0x1FF 帧。
- *        通道位置 = 该帧管理范围内的第 N 个 ID：
- *        通道1(字节0-1)=ID1(Yaw)，通道2(字节2-3)=ID2(水平)，
- *        通道3/4 没接电机填 0（填 0 表示该电机不驱动）。
+ * @brief 分别下发两个电机的指令（两帧不同的 CAN ID）：
+ *        帧1: 0x1FF（GM6020）通道1 = Yaw 电压，其余通道填 0
+ *        帧2: 0x200（C620）  通道2 = 水平电流，其余通道填 0
+ *        通道位置 = (ESC_ID - 1) × 2 字节偏移。
  */
 HAL_StatusTypeDef CAN_cmd_both(int16_t yaw_voltage, int16_t horizontal_voltage)
 {
     CAN_TxHeaderTypeDef header = {0};
     uint8_t data[8];
     uint32_t mailbox;
+    HAL_StatusTypeDef ret1, ret2;
 
-    header.StdId = C620_COMMAND_ID;
+    /* 帧1: GM6020 控制帧 0x1FF，Yaw 在通道 YAW_ESC_ID */
+    header.StdId = GM6020_COMMAND_ID;
     header.IDE = CAN_ID_STD;
     header.RTR = CAN_RTR_DATA;
     header.DLC = 8U;
 
-    /* 高字节在前（大端），& 不需要因为有符号右移符号扩展，但强转保证正确 */
-    data[0] = (uint8_t)((uint16_t)yaw_voltage >> 8);
-    data[1] = (uint8_t)yaw_voltage;
-    data[2] = (uint8_t)((uint16_t)horizontal_voltage >> 8);
-    data[3] = (uint8_t)horizontal_voltage;
-    data[4] = 0U;
-    data[5] = 0U;
-    data[6] = 0U;
-    data[7] = 0U;
+    memset(data, 0, sizeof(data));
+    data[(YAW_ESC_ID - 1U) * 2U]     = (uint8_t)((uint16_t)yaw_voltage >> 8);
+    data[(YAW_ESC_ID - 1U) * 2U + 1U] = (uint8_t)yaw_voltage;
+    ret1 = HAL_CAN_AddTxMessage(&hcan1, &header, data, &mailbox);
 
-    return HAL_CAN_AddTxMessage(&hcan1, &header, data, &mailbox);
+    /* 帧2: C620 控制帧 0x200，水平在通道 HORIZONTAL_ESC_ID */
+    header.StdId = C620_COMMAND_ID;
+    memset(data, 0, sizeof(data));
+    data[(HORIZONTAL_ESC_ID - 1U) * 2U]     = (uint8_t)((uint16_t)horizontal_voltage >> 8);
+    data[(HORIZONTAL_ESC_ID - 1U) * 2U + 1U] = (uint8_t)horizontal_voltage;
+    ret2 = HAL_CAN_AddTxMessage(&hcan1, &header, data, &mailbox);
+
+    return (ret1 == HAL_OK && ret2 == HAL_OK) ? HAL_OK : HAL_ERROR;
 }
 
 /**
