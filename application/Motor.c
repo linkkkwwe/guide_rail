@@ -77,7 +77,8 @@ void motor_ctrl_clear(motor_ctrl_t *motor)
         Pid_clear(&motor->pid_speed);        
     
     motor->spin_speed_rpm = 0.0f;  /* 掉线清零：恢复后由上层重新设置匀速模式 */
-    motor->gear_ratio = GM6020_GEAR_RATIO; /* 默认 1.0，init 会按轴覆盖 */
+    /* gear_ratio 不在这里重置：init 已按轴设好（yaw=1.0 水平=19.2），
+     * 这里覆盖会把水平轴减速比冲回 1.0，角度变成转子角度 */
     motor->total_rounds = 0;
     motor->offset_ecd = 0U;
     motor->last_ecd = 0U;

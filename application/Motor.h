@@ -35,10 +35,10 @@
 #define YAW_SPIN_SPEED_RPM    60.0f    /* GM6020 直驱，60rpm 肉眼可见的慢转 */
 
 /* ===== 水平电机 PID 参数（与 Yaw 相同，后续按机械结构单独调） ===== */
-#define HORIZONTAL_ANGLE_KP         300.0f    /* 仿真调参：Kp=309 */
+#define HORIZONTAL_ANGLE_KP         300.0f    /* 调试定值：能推过静摩擦 */
 #define HORIZONTAL_ANGLE_KI         0.0f    /* 不用积分（避免三角波拐点 windup） */
-#define HORIZONTAL_ANGLE_KD         0.0f    /* 仿真调参：Kd=6900，压拐点过冲 */
-#define HORIZONTAL_ANGLE_MAX_OUT    16384.0f
+#define HORIZONTAL_ANGLE_KD         200.0f  /* 调试定值：大于会放大编码器噪声嗡嗡抖 */
+#define HORIZONTAL_ANGLE_MAX_OUT    16384.0f /*最大电流*/
 #define HORIZONTAL_ANGLE_MAX_IOUT   5000.0f
 /* 水平轴用单环（角度环）控制，速度环参数不需要，保持注释 */
 // #define HORIZONTAL_SPEED_KP        1000.0f

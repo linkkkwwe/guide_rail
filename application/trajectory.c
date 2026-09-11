@@ -4,7 +4,7 @@
 
 #define PI_F                    3.1415926f
 #define TRAJECTORY_AMPLITUDE   30.0f   /* 摆幅 ±30°，对应 Motor.h 中的角度限位 */
-#define TRAJECTORY_PERIOD_MS   6000U   /* 一个完整周期 = 6 秒（降速：原 2 秒太快） */
+#define TRAJECTORY_PERIOD_MS   6000U   /* 一个完整周期 = 6 秒 */
 
 /*
  * 轨迹生成器：给定"从模式启动到现在经过的时间"，返回一个目标角度。
