@@ -5,27 +5,26 @@
 #include "struct_typedef.h"
 
 /*
- * ==================== CAN 协议：Yaw=GM6020，水平=M3508 ====================
- * GM6020：控制帧 0x1FF（管 ID 1~4），反馈帧 0x204+ID，电压 ±30000，直驱 1:1
- * M3508 ：控制帧 0x200（管 ID 1~4），反馈帧 0x200+ID，电流 ±16384，减速比 19.2
- * 两个电机用不同的控制帧，CAN_cmd_each 发两帧。
+ * ============ CAN 协议：Yaw = GM6020 直驱电机（单电机工程） ============
+ * 本工程只控制 Yaw 电机（水平轴 M3508 在 GUID_RAIL 工程里）。
+ * GM6020：内置驱动器，无需外接电调。控制帧 0x1FF（管 ID 1~4），
+ *         反馈帧 0x200+ID（ID=1 → 0x205），电压指令 ±25000。
+ *         6020 直驱无减速箱，gear_ratio=1.0，转子转速 = 输出轴转速。
+ *         最大空载转速 320rpm。
  * 反馈帧 8 字节 = ecd(2B) + speed_rpm(2B) + given_current(2B)
  *               + temperature(1B) + 保留(1B)，全部大端。
  * ========================================================================
  */
 
-#define GM6020_COMMAND_ID      0x1FFU            /* GM6020 控制帧（管 ID 1~4） */
-#define C620_COMMAND_ID        0x200U            /* C620 控制帧（管 ID 1~4） */
-#define YAW_ESC_ID              1U                /* Yaw 电调拨码 ID（GM6020） */
-#define HORIZONTAL_ESC_ID       2U                /* 水平电调拨码 ID（C620/M3508） */
-#define CAN_YAW_FEEDBACK_ID     (0x204U + YAW_ESC_ID)          /* = 0x205 */
-#define CAN_HORIZONTAL_FEEDBACK_ID (0x200U + HORIZONTAL_ESC_ID) /* = 0x202 */
+#define M6020_COMMAND_ID       0x1FFU            /* GM6020 电压控制帧（管 ID 1~4） */
+#define M6020_CURRENT_CMD_ID   0x1FEU            /* GM6020 电流控制帧（管 ID 1~4，需固件开启电流环） */
+#define YAW_ESC_ID            1U                /* Yaw 电机拨码 ID（GM6020） */
+#define CAN_YAW_FEEDBACK_ID   (0x204U + YAW_ESC_ID)          /* = 0x205 */
 
-/* 电机索引：与 motor_measure[] 数组下标对应 */
+/* 电机索引：与 motor_measure[] 数组下标对应（本工程只有一个电机） */
 typedef enum
 {
     YAW_MOTOR = 0,      /**< Yaw 轴（左右摆动） */
-    HORIZONTAL_MOTOR,   /**< 水平轴（移动） */
     GUIDE_MOTOR_COUNT   /**< 电机数量（数组大小） */
 } guide_motor_index_e;
 
@@ -43,15 +42,21 @@ typedef struct
 extern volatile motor_measure_t motor_measure[GUIDE_MOTOR_COUNT];
 
 /**
- * @brief 分别下发两个电机的指令：Yaw 走 0x1FF（GM6020），水平走 0x200（C620）。
- * @param yaw_voltage        Yaw 电机电压（±30000，GM6020）。
- * @param horizontal_voltage 水平电机电流（±16384，C620/M3508）。
- * @return HAL_OK 两帧都发送成功；否则至少一帧失败。
+ * @brief 下发 Yaw 电机电压指令：走 0x1FF（GM6020 电压控制帧）。
+ * @param yaw_voltage Yaw 电压指令（±25000）。
+ * @return HAL_OK 发送成功；否则失败。
  */
-HAL_StatusTypeDef CAN_cmd_both(int16_t yaw_voltage, int16_t horizontal_voltage);
+HAL_StatusTypeDef CAN_cmd_yaw(int16_t yaw_voltage);
 
 /**
- * @brief 判断两个电机反馈是否都在线（100ms 内有新反馈）。
+ * @brief 下发 Yaw 电机电流指令：走 0x1FE（GM6020 电流控制帧，仅电流环开启时生效）。
+ * @param yaw_current Yaw 电流指令（±16384 对应 ±3A）。
+ * @return HAL_OK 发送成功；否则失败。
+ */
+HAL_StatusTypeDef CAN_cmd_yaw_current(int16_t yaw_current);
+
+/**
+ * @brief 判断 Yaw 电机反馈是否在线（100ms 内有新反馈）。
  * @return 1 = 在线可闭环，0 = 掉线需下电。
  */
 uint8_t CAN_motor_feedback_ready(void);

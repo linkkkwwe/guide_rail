@@ -39,25 +39,22 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
     if (header.StdId == CAN_YAW_FEEDBACK_ID)
         motor_measure_update(&motor_measure[YAW_MOTOR], data);
-    else if (header.StdId == CAN_HORIZONTAL_FEEDBACK_ID)
-        motor_measure_update(&motor_measure[HORIZONTAL_MOTOR], data);
 }
 
 /**
- * @brief 分别下发两个电机的指令（两帧不同的 CAN ID）：
- *        帧1: 0x1FF（GM6020）通道1 = Yaw 电压，其余通道填 0
- *        帧2: 0x200（C620）  通道2 = 水平电流，其余通道填 0
+ * @brief 下发 Yaw 电机电压指令（一帧 CAN）：
+ *        帧: 0x1FF（GM6020 电压控制帧）通道 YAW_ESC_ID = Yaw 电压，其余通道填 0
  *        通道位置 = (ESC_ID - 1) × 2 字节偏移。
+ *        电压范围 ±25000。
  */
-HAL_StatusTypeDef CAN_cmd_both(int16_t yaw_voltage, int16_t horizontal_voltage)
+HAL_StatusTypeDef CAN_cmd_yaw(int16_t yaw_voltage)
 {
     CAN_TxHeaderTypeDef header = {0};
     uint8_t data[8];
     uint32_t mailbox;
-    HAL_StatusTypeDef ret1, ret2;
 
-    /* 帧1: GM6020 控制帧 0x1FF，Yaw 在通道 YAW_ESC_ID */
-    header.StdId = GM6020_COMMAND_ID;
+    /* 帧: GM6020 控制帧 0x1FF，Yaw 在通道 YAW_ESC_ID */
+    header.StdId = M6020_COMMAND_ID;
     header.IDE = CAN_ID_STD;
     header.RTR = CAN_RTR_DATA;
     header.DLC = 8U;
@@ -65,20 +62,35 @@ HAL_StatusTypeDef CAN_cmd_both(int16_t yaw_voltage, int16_t horizontal_voltage)
     memset(data, 0, sizeof(data));
     data[(YAW_ESC_ID - 1U) * 2U]     = (uint8_t)((uint16_t)yaw_voltage >> 8);
     data[(YAW_ESC_ID - 1U) * 2U + 1U] = (uint8_t)yaw_voltage;
-    ret1 = HAL_CAN_AddTxMessage(&hcan1, &header, data, &mailbox);
 
-    /* 帧2: C620 控制帧 0x200，水平在通道 HORIZONTAL_ESC_ID */
-    header.StdId = C620_COMMAND_ID;
-    memset(data, 0, sizeof(data));
-    data[(HORIZONTAL_ESC_ID - 1U) * 2U]     = (uint8_t)((uint16_t)horizontal_voltage >> 8);
-    data[(HORIZONTAL_ESC_ID - 1U) * 2U + 1U] = (uint8_t)horizontal_voltage;
-    ret2 = HAL_CAN_AddTxMessage(&hcan1, &header, data, &mailbox);
-
-    return (ret1 == HAL_OK && ret2 == HAL_OK) ? HAL_OK : HAL_ERROR;
+    return HAL_CAN_AddTxMessage(&hcan1, &header, data, &mailbox);
 }
 
 /**
- * @brief 双电机在线检查：都收到过反馈，且最近 100ms 内仍在更新。
+ * @brief 下发 Yaw 电机电流指令（一帧 CAN）：
+ *        帧: 0x1FE（GM6020 电流控制帧），仅当电机电流环开关开启时生效。
+ *        电流范围 ±16384 对应 ±3A。
+ */
+HAL_StatusTypeDef CAN_cmd_yaw_current(int16_t yaw_current)
+{
+    CAN_TxHeaderTypeDef header = {0};
+    uint8_t data[8];
+    uint32_t mailbox;
+
+    header.StdId = M6020_CURRENT_CMD_ID;
+    header.IDE = CAN_ID_STD;
+    header.RTR = CAN_RTR_DATA;
+    header.DLC = 8U;
+
+    memset(data, 0, sizeof(data));
+    data[(YAW_ESC_ID - 1U) * 2U]     = (uint8_t)((uint16_t)yaw_current >> 8);
+    data[(YAW_ESC_ID - 1U) * 2U + 1U] = (uint8_t)yaw_current;
+
+    return HAL_CAN_AddTxMessage(&hcan1, &header, data, &mailbox);
+}
+
+/**
+ * @brief Yaw 电机在线检查：收到过反馈，且最近 100ms 内仍在更新。
  *        电机反馈周期约 1ms，100ms 无新帧即认为掉线。
  */
 uint8_t CAN_motor_feedback_ready(void)
@@ -86,7 +98,5 @@ uint8_t CAN_motor_feedback_ready(void)
     uint32_t now = HAL_GetTick();
 
     return (uint8_t)(motor_measure[YAW_MOTOR].received &&
-                     motor_measure[HORIZONTAL_MOTOR].received &&
-                     (now - motor_measure[YAW_MOTOR].last_rx_tick < 100U) &&
-                     (now - motor_measure[HORIZONTAL_MOTOR].last_rx_tick < 100U));
+                     (now - motor_measure[YAW_MOTOR].last_rx_tick < 100U));
 }
