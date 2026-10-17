@@ -409,9 +409,9 @@ int main(void)
       CAN_cmd_yaw(yaw_v);
 
       /* SerialPlot 输出：目标转速, 实际转速, PID 输出 */
-      serialplot_output(yaw_rpm_cmd,
-                        (fp32)motor_measure[YAW_MOTOR].speed_rpm,
-                        yaw_v);
+//      serialplot_output(yaw_rpm_cmd,
+//                        (fp32)motor_measure[YAW_MOTOR].speed_rpm,
+//                        yaw_v);
     }
   }
   /* USER CODE END 3 */
